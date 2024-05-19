@@ -7,13 +7,15 @@ setup(
         'ipfs_accelerate',
 	],
 	install_requires=[
+        'ipfs_transformers@git+https://github.com/endomorphosis/ipfs_transformers.git',
+        'ipfs_model_manager@git+https://github.com/endomorphosis/ipfs_model_manager.git',
         'transformers',
-        'torch',
+		'torch',
         'torchvision',
         'numpy',
         'torchtext',
 		'urllib3',
 		'requests',
-		'boto3',
+		'boto3'
 	]
 )
