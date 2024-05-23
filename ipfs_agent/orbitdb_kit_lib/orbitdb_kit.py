@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess as process 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from ipfs_transformers.orbit_kit import orbit_kit
 import websockets as ws 
 from config import config
 

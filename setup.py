@@ -16,6 +16,7 @@ setup(
         'torchtext',
 		'urllib3',
 		'requests',
-		'boto3'
+		'boto3',
+        'toml',
 	]
 )
