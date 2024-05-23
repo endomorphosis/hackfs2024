@@ -76,9 +76,14 @@ class config():
     def requireConfig(self, opts = None):
         configPath = None
         this_dir = os.path.dirname(os.path.realpath(__file__))
-        this_config = os.path.join(this_dir, 'config.toml')
-        if type(opts) == str and os.path.exists(opts) and opts is not None:
+        this_opts_path = os.path.join(this_dir, opts)
+        this_parent_dir = os.path.dirname(this_dir)
+        this_opts_parent_path = os.path.join(this_parent_dir, opts)
+
+        if type(opts) == str and os.path.exists(this_opts_path) and opts != "":
             configPath = opts
+        elif type(opts) == str and os.path.exists(this_opts_parent_path) and opts != "":
+            configPath = this_opts_parent_path
         elif  type(opts) == dict and 'config' in opts and os.path.exists(opts['config']) and opts['config'] is not None:
             configPath = opts['config']
         elif opts is None and "findConfig" in dir(self):

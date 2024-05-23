@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import websockets as ws 
 from config import config
 
-class orbitdb_kit:
+class orbitdb_kit():
     def __init__(self, resources, meta=None):
         self.resources = resources
         self.meta = meta

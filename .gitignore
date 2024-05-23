@@ -1,0 +1,6 @@
+*/config/config.toml
+ipfs_agent/config/config.toml
+__pycache__
+config/__pycache__
+*/config/__pycache__
+*/config/__pycache__/*
