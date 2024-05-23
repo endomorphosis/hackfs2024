@@ -6,7 +6,7 @@ from ipfs_transformers.orbit_kit import orbit_kit
 import websockets as ws 
 from config import config
 
-class orbit_kit:
+class orbitdb_kit:
     def __init__(self, resources, meta=None):
         self.resources = resources
         self.meta = meta
@@ -74,6 +74,6 @@ class orbit_kit:
 if __name__ == '__main__':
     resources = {}
     meta = {}
-    orbit_kit = orbit_kit(resources, meta)
-    print(orbit_kit.get_resources())
+    orbitdb_kit = orbitdb_kit(resources, meta)
+    print(orbitdb_kit.get_resources())
 
