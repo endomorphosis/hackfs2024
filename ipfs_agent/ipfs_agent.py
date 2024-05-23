@@ -14,10 +14,10 @@ class ipfs_agent:
                 meta['config'] = meta['config']
         if resources is None:
             resources = {}
-
         self.config = config.config({}, meta=meta)
-        self.config = self.config.load_config()
-
+        self.baseConfig = self.config.baseConfig
+        for key, value in self.baseConfig.items():
+            meta[key] = value
         self.model_manager = ipfs_model_manager.ipfs_model_manager(resources, meta)
         self.orbitdb_kit = orbitdb_kit.orbitdb_kit(resources, meta)
         pass
