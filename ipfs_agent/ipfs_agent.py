@@ -18,17 +18,16 @@ class ipfs_agent:
         self.baseConfig = self.config.baseConfig
         for key, value in self.baseConfig.items():
             meta[key] = value
-        self.model_manager = ipfs_model_manager.ipfs_model_manager(resources, meta)
         self.orbitdb_kit = orbitdb_kit.orbitdb_kit(resources, meta)
+        #self.model_manager = ipfs_model_manager.ipfs_model_manager(resources, meta)
         pass
 
-    def __call__(self, input):
+    def __call__(self):
         config = self.config
-        models = self.model_manager.list_ipfs_models()
+        #models = self.model_manager.list_ipfs_models()
         orbitdb = self.orbitdb_kit.start_orbitdb()
         results = {
             "config": config,
-            "models": models,
             "orbitdb": orbitdb
         }
         return results

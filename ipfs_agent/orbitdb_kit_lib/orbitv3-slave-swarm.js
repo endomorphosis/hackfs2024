@@ -27,7 +27,6 @@ import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { all } from '@libp2p/websockets/filters'
 import { ping } from '@libp2p/ping'
 import { multiaddr } from 'multiaddr'
-import { ping } from '@libp2p/ping'
 
 const require = createRequire(import.meta.url);
 let bootstrappers = [

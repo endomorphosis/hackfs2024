@@ -1,6 +1,8 @@
-*/config/config.toml
 ipfs_agent/config/config.toml
+ipfs_agent/orbitdb_kit_lib/node_modules/*
+*/config/config.toml
 __pycache__
+node_modules
 config/__pycache__
 */config/__pycache__
 */config/__pycache__/*
