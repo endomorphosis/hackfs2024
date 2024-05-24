@@ -46,7 +46,7 @@ const ipfsLibp2pOptions = {
         webSockets({
             // filter: all
         }),
-        webRTC(),
+        // webRTC(),
         circuitRelayTransport({
             discoverRelays: 1
         })
@@ -205,9 +205,10 @@ async function run(options) {
         }
     })
     console.info(`${new Date().toISOString()}running with db address ${db.address}`)
+    const wss = new WebSocketServer({ port: port });
     wss.on('connection', (ws) => {
-        const ip = req.connection.remoteAddress;
-        if (ip === '127.0.0.1') {
+        const ip = ws._socket.remoteAddress;
+        if (ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') {
             console.log('New WebSocket connection');
             ws.on('message', (message) => {
                 message = JSON.parse(message.toString());
@@ -219,16 +220,8 @@ async function run(options) {
                     case 'ping':
                         // Handle ping logic
                         let ping_peers = ipfs.libp2p.peerStore.peers
-                        ipfs.libp2p.getPeerInfo().multiaddrs.forEach((addr) => {
-                            console.log('Peer address:', addr.toString());
-                            ipfs.libp2p.ping(addr.toString(), (time) => {
-                                console.log('Ping time:', time);
-                                ws.send(JSON.stringify({peer: addr.toString(), message : "ping", time: time}));
-                            });
-                            let pong = ipfs.libp2p.roundTrip(addr.toString(), {timeout: 1000});
-                            console.log('Pong:', pong);
-                            ws.send(JSON.stringify({peer: addr.toString(), message: "pong", time: pong}));
-                        });
+                        console.log('Ping peers:', ping_peers);
+                        ws.send(JSON.stringify({'pong' : ping_peers}));
                         break;
 
                     case 'peers' :
@@ -323,10 +316,10 @@ async function run(options) {
                 }
             });
 
-            ipfs.libp2p.pubsub.on('message', (msg) => {
-                console.log('Received pubsub message:', msg);
-                ws.send(JSON.stringify(msg));
-            });
+            // ipfs.libp2p.pubsub.on('message', (msg) => {
+            //     console.log('Received pubsub message:', msg);
+            //     ws.send(JSON.stringify(msg));
+            // });
 
         } else {
             console.log('Unauthorized connection attempt:', ip);

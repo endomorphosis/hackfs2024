@@ -3,13 +3,17 @@ import sys
 import subprocess as process 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import websockets as ws 
+import asyncio
+import websockets
 from config import config
+import json
 
 class orbitdb_kit():
     def __init__(self,  resources=None, meta=None):
         self.resources = resources
         self.meta = meta
         self.config = config
+        self.connection = None
         self.orbitdb_args = {}
         self.this_dir = os.path.dirname(os.path.realpath(__file__))
         if self.meta is None:
@@ -65,22 +69,136 @@ class orbitdb_kit():
             self.orbitdb_args['port'] = 50001
         pass
 
-    def start_orbitdb(self):
+    def start_orbitdb(self , args = None):
         start_args = self.orbitdb_args
+        if args is not None:
+            for key, value in args.items():
+                start_args[key] = value
         start_argstring = ''
         for key, value in start_args.items():
             start_argstring += ' --' + key + '=' + str(value) + ' '
         start_cmd = 'node ' + os.path.join(self.this_dir, 'orbitv3-slave-swarm.js') + ' ' + start_argstring  
-        start_orbitdb = process.Popen(start_cmd, stdout=process.PIPE, stderr=process.PIPE)
+        print(start_cmd)
+        start_cmd = start_cmd.split(' ')
+        start_orbitdb = process.Popen(start_cmd)
+        # start_orbitdb = process.Popen(start_cmd, shell=True)
+        # start_orbitdb = process.run(start_cmd, stdout=process.PIPE, stderr=process.PIPE)
+        # pause for 5 seconds to allow orbitdb to start
+        asyncio.get_event_loop().run_until_complete(asyncio.sleep(15))
+        asyncio.get_event_loop().run_until_complete(self.connect_orbitdb())
         return start_orbitdb
         pass
 
-    def stop_orbitdb(self):
+    async def connect_orbitdb(self, args = None):
+        try:
+            async with websockets.connect('ws://' + self.orbitdb_args['ipaddress'] + ':' + str(self.orbitdb_args['port'])) as websocket:
+                # You can now interact with the websocket
+                # For example, to send a message, you would do:
+                await websocket.send(json.dumps({"ping": "pong"}))
+                self.connection = websocket
+                return websocket
+        except Exception as e:
+            print(e)
+            raise e
+
+    def send_recv(self,data_type, data, args):
+        try:
+            payload = {
+                data_type: data
+            }
+            payload = json.dumps(payload)
+            response = self.connection.recv()
+            return response
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def insert_orbitdb(self, data, args = None):
+        try:
+            results = self.send_recv('insert', data, args)
+            return results
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def update_orbitdb(self, data, args = None):
+        try:
+            results = self.send_recv('update', data, args)
+            return results
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def select_orbitdb(self, data, args = None):
+        try:
+            results = self.send_recv('select', data, args)
+            return results
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def delete_orbitdb(self, data, args = None):
+        try:
+            results = self.send_recv('delete', data, args)
+            return results
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def select_all_orbitdb(self, args = None):
+        try:
+            results = self.send_recv('select_all', None, args)
+            return results
+        except Exception as e:
+            print(e)
+            raise e
+        finally:
+            pass
+
+    def stop_orbitdb(self, args = None):
+        ps_orbitb_results = None
+        stop_orbitdb_results = None
+
         start_args = self.orbitdb_args
+        if args is not None:
+            for key, value in args.items():
+                start_args[key] = value
         start_argstring = ''
-        ps_orbitdb = 'ps -ef | grep orbitdb | grep -v grep | awk \'{print $2}\' | grep --port=' + start_args['port'] + ' | xargs kill -9'
-        stop_orbitdb = process.Popen(ps_orbitdb, stdout=process.PIPE, stderr=process.PIPE)
-        pass
+        ps_orbitdb = 'ps -ef | grep orbitdb | grep -v grep | awk \'{print $2}\' | grep port=' + str(start_args['port']) + " "
+        stop_orbitdb = 'ps -ef | grep orbitdb | grep -v grep | awk \'{print $2}\' | grep port=' + str(start_args['port']) + ' | xargs kill -9'
+        print(ps_orbitdb)
+        print(stop_orbitdb)
+        try:
+            ps_orbitb_results = process.check_output(ps_orbitdb, shell=True)
+        except Exception as e:
+            print(e)
+            ps_orbitb_results = e
+            pass
+        finally:
+            if ps_orbitb_results is not None and ( type == bytes or type == str):
+                try:
+                    stop_orbitdb_results = process.check_output(stop_orbitdb, shell=True)
+                except Exception as e:
+                    print(e)
+                    raise e
+                finally:
+                    pass
+
+        results = {
+            'ps_orbitdb': ps_orbitb_results,
+            'stop_orbitdb': stop_orbitdb_results
+        }
+        return results
 
     def get_resources(self):
         return self.resources

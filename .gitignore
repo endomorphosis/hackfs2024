@@ -9,3 +9,5 @@ config/__pycache__
 config/config.toml
 ipfs_agent/orbitdb_kit_lib/ipfs
 ipfs_agent/orbitdb_kit_lib/orbitdb
+ipfs/
+orbitdb/
