@@ -117,10 +117,14 @@ async function run(options) {
     else if (argv.ipAddress) {
         ipAddress = argv.ipAddress
     }
+    else{
+        ipAddress = "127.0.0.1"
+    }
     
     if (!argv.swarmName && !options.swarmName) {
         console.error('Please provide a swarm Name');
-        process.exit(1);
+        // process.exit(1);
+        swarmName = "caselaw"
     }
     else if (Object.keys(options).includes('swarmName')) {
         swarmName = options.swarmName
@@ -128,28 +132,40 @@ async function run(options) {
     else if (argv.swarmName) {
         swarmName = argv.swarmName
     }
+    else{
+        swarmName = "caselaw"
+    }
     
     if (!argv.port && !Object.keys(options).includes('port')) {
         console.error('Please provide a port number');
-        process.exit(1);
+        // process.exit(1);
+        port = 50001
     }else if (Object.keys(options).includes('port')) {
         port = options.port
     }else if (argv.port) {
         port = argv.port
+    }else{
+        port = 50001
     }
+
 
     if (!argv.chunkSize && !Object.keys(options).includes('chunkSize')) {
         console.error('Please provide a chunk size');
-        process.exit(1);
+        // process.exit(1);
+        chunkSize = 8
     }else if (Object.keys(options).includes('chunkSize')) {
         chunkSize = options.chunkSize
     }else if (argv.chunkSize) {
         chunkSize = argv.chunkSize
     }
+    else{
+        chunkSize = 8
+    }
 
     if (!argv.index && !Object.keys(options).includes('index')) {
         console.error('Please provide an index');
-        process.exit(1);
+        // process.exit(1);
+        index = 1
     }
     else if (Object.keys(options).includes('index')) {
         index = options.index
@@ -157,6 +173,10 @@ async function run(options) {
     else if (argv.index) {
         index = argv.index
     }
+    else{
+        index = 1
+    }
+
     process.on('SIGTERM', handleTerminationSignal);
     process.on('SIGINT', handleTerminationSignal);
     console.info('Script is running. Press CTRL+C to terminate.');
@@ -219,17 +239,37 @@ async function run(options) {
                 switch (method) {
                     case 'ping':
                         // Handle ping logic
-                        let ping_peers = ipfs.libp2p.peerStore.peers
+                        let ping_peers = ipfs.libp2p.peerStore.store.datastore.data;
                         console.log('Ping peers:', ping_peers);
-                        ws.send(JSON.stringify({'pong' : ping_peers}));
+                        let ping_peers_list = [];
+                        let ping_peers_time = {}
+                        for (let peer of ping_peers) {
+                            let begin = Date.now();
+                            console.log('Pinging peer:', peer[0]);
+                            ping_peers_list.push(peer[0]);
+                            let end = Date.now();
+                            ping_peers_time[peer[0]] = end - begin;
+                        }                        
+                        let ping_peers_time_string = JSON.stringify({'pong' : ping_peers_time});
+                        ws.send(ping_peers_time_string);
                         break;
 
                     case 'peers' :
                         // Handle peers logic
-                        let peers = ipfs.libp2p.peerStore.peers
+                        let peers_ls = ipfs.libp2p.peerStore.store.datastore.data;
+                        console.log('Ping peers:', peers_ls);
+                        let peers_list = [];
+                        let peers_time = {}
+                        for (let peer of peers_ls) {
+                            let begin = Date.now();
+                            console.log('Pinging peer:', peer[0]);
+                            peers_list.push(peer[0]);
+                            let end = Date.now();
+                            peers_time[peer[0]] = end - begin;
+                        }
 
-                        console.log('Peers:', peers);
-                        ws.send(JSON.stringify(peers));
+                        console.log('Peers:', peers_list);
+                        ws.send(JSON.stringify({ "peers": peers_list }));
                         break;
 
                     case 'pubsub':

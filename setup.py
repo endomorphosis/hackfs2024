@@ -18,5 +18,6 @@ setup(
 		'requests',
 		'boto3',
         'toml',
+        'websocket-client',
 	]
 )

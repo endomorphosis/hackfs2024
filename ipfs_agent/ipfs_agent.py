@@ -1,6 +1,8 @@
 import ipfs_model_manager as ipfs_model_manager
 import config as config
 import orbitdb_kit_lib as orbitdb_kit
+import os
+import asyncio
 
 class ipfs_agent:
     def __init__(self, resources=None, meta=None):
@@ -22,16 +24,17 @@ class ipfs_agent:
         #self.model_manager = ipfs_model_manager.ipfs_model_manager(resources, meta)
         pass
 
-    def __call__(self):
+    async def __call__(self):
         config = self.config
         #models = self.model_manager.list_ipfs_models()
-        orbitdb = self.orbitdb_kit.stop_orbitdb()
-        orbitdb = self.orbitdb_kit.start_orbitdb()
-        #connect = self.orbitdb_kit.connect_orbitdb()
+        # orbitdb = self.orbitdb_kit.stop_orbitdb()
+        # orbitdb = self.orbitdb_kit.start_orbitdb()
+        connect = self.orbitdb_kit.connect_orbitdb()
+        # asyncio.run(self.orbitdb_kit.connect_orbitdb())
         #print("connect")
         #print(connect)
         insert_key = { "test": "test document" }
-        insert = self.orbitdb_kit.insert_orbitdb(insert_key)
+        insert = await self.orbitdb_kit.insert_orbitdb(insert_key)
         print("insert")
         print(insert)
         update_key = { "test": "test document @ update" }
@@ -62,4 +65,6 @@ if __name__ == '__main__':
     meta = {}
     resources = {}
     ipfs_agent = ipfs_agent(resources, meta)
+    results = asyncio.run(ipfs_agent())
+    print(results)
     print(ipfs_agent())

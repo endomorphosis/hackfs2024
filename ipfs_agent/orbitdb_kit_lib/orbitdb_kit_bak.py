@@ -6,7 +6,6 @@ import websockets as ws
 import asyncio
 from config import config
 import json
-from websocket_kit import WebSocketClient
 
 class orbitdb_kit():
     def __init__(self,  resources=None, meta=None):
@@ -15,11 +14,6 @@ class orbitdb_kit():
         self.config = config
         self.connection = None
         self.orbitdb_args = {}
-        self.peers = []
-        self.ping = {}
-        self.state = {
-            "status": "disconnected"
-        }
         self.ws = None
         self.url = None
         self.this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -76,6 +70,18 @@ class orbitdb_kit():
             self.orbitdb_args['port'] = 50001
         pass
 
+    def on_message(self, ws, message):
+        print(f"Received message: {message}")
+
+    def on_error(self, ws, error):
+        print(f"Error occurred: {error}")
+
+    def on_close(self, ws):
+        print("Connection closed")
+
+    def on_open(self, ws):
+        print("Connection opened")
+
     def start_orbitdb(self , args = None):
         start_args = self.orbitdb_args
         if args is not None:
@@ -97,79 +103,34 @@ class orbitdb_kit():
         pass
 
     async def connect_orbitdb(self, args = None):
-        self.url = 'ws://' + self.orbitdb_args['ipaddress'] + ':' + str(self.orbitdb_args['port'])
-        self.ws = WebSocketClient(self.url, 
-            {
-            "on_open" : self.on_open,
-            "on_message" : self.on_message,
-            "on_error" : self.on_error,
-            "on_close" : self.on_close
-            }
-        )
-        return self.ws
-    
-    def on_pong_message(self, ws, message):
-        pass
+        
+        try:
 
-    def on_ping_message(self, ws, message):
-        pass
+            self.url = 'ws://' + self.orbitdb_args['ipaddress'] + ':' + str(self.orbitdb_args['port'])
+            self.ws = websocket.create_connection(
+                self.url,
+                on_message=self.on_message,
+                on_error=self.on_error,
+                on_close=self.on_close
+            )            
+            self.ws.on_open = self.on_open
+            self.ws.run_forever()
+            # async with websockets.connect('ws://' + self.orbitdb_args['ipaddress'] + ':' + str(self.orbitdb_args['port'])) as websocket:
+            #     await websocket.send(json.dumps({"ping": "pong"}))
+                
+            #     # bind the websocket variable to the orbitdb_kit object
+                
+            #     # You can now interact with the websocket
+            #     # For example, to send a message, you would do:
 
-    def on_peers_message(self, ws, message):
-        pass
-
-    def on_message(self, ws, message):
-        print(f"Received message: message = '{message}')")
-        recv = json.loads(message)
-        if 'pong' in recv:
-            message = self.on_pong_message(
-                ws, json.dumps({
-                    'pong': recv['pong']
-                })
-            )
-            
-        if 'ping' in recv:
-            message = self.on_ping_message(
-                ws, json.dumps({
-                    'ping': recv['ping']
-                })
-            )
-
-        if 'peers' in recv:
-            message = self.on_peers_message(
-                ws, json.dumps({
-                    'peers': recv['peers']
-                })
-            )
-
-        ws_recv = json.loads(message)
-        print(ws_recv)
-
-        return message
-    
-    def on_error(self, ws, error):
-        print(f"Error occurred: {error}")
-        return error
-
-    def on_close(self, ws):
-        print("Connection closed")
-        return ws
-    
-    def on_open(self, ws):
-        print('connection accepted')
-        # ws.send(json.dumps({
-        #     'event': 'init',
-        #     'status': self.state['status']
-        # }))
-        ws.send(json.dumps({
-            'peers': 'ls'
-        }))
-        ws.send(json.dumps({
-            'ping': 'pong'
-        }))
-        results = self.main()
-        print(results)
-        return results
-
+            #     self.connection = websocket
+            #     self.send = websocket.send
+            #     self.recv = websocket.recv
+                
+            #     return websocket
+        except Exception as e:
+            print(e)
+            raise e
 
     async def send_recv(self,data_type, data, args):
         try:
@@ -180,7 +141,7 @@ class orbitdb_kit():
             payload = json.dumps(payload)
             if self.ws is not None:
                 self.ws.send(payload)
-                response = await self.ws.recv()
+                response = self.ws.recv()
             return response
         except Exception as e:
             print(e)
@@ -188,9 +149,9 @@ class orbitdb_kit():
         finally:
             pass
 
-    async def insert_orbitdb(self, data, args = None):
+    def insert_orbitdb(self, data, args = None):
         try:
-            results = await self.send_recv('insert', data, args)
+            results = self.send_recv('insert', data, args)
             return results
         except Exception as e:
             print(e)
@@ -276,18 +237,9 @@ class orbitdb_kit():
     def get_resources(self):
         return self.resources
     
-    def main(self):
-        print("main")
-        pass
-
-    async def test(self):
-        print("testing")
-        await orbitdb_kit.connect_orbitdb()
-    
 if __name__ == '__main__':
     resources = {}
     meta = {}
     orbitdb_kit = orbitdb_kit(resources, meta)
-    results = asyncio.run(orbitdb_kit.test())
-    print("done")
+    print(orbitdb_kit.start_orbitdb())
 
