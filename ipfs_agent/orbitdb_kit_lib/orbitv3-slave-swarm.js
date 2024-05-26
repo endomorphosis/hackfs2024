@@ -281,14 +281,15 @@ async function run(options) {
 
                     case 'insert':
                         // Handle insert logic
-                        let insertKey = data._id;
-                        let insertValue = data.content;
+                        let insertKey = Object.keys(data)[0];
+                        let insertValue = data[insertKey];
+                        let insertDoc = {_id: insertKey, content: insertValue};
                         console.log('Inserting data: ', insertKey, insertValue);
                         validate(insertValue).then((result) => {
                             if (result) {
-                                db.put(data).then(() => {
+                                db.put(insertDoc).then(() => {
                                     console.log('Data inserted:', data);
-                                    ws.send('Data inserted');
+                                    ws.send({"insert": {insertKey: insertValue}});
                                 }).catch((error) => {
                                     console.error('Error inserting data:', error);
                                     ws.send('Error inserting data');
@@ -333,6 +334,16 @@ async function run(options) {
                             console.error('Error selecting document:', error);
                             ws.send('Error selecting document');
                         })
+                        break;
+                    case 'select_all':
+                        // Handle select all logic
+                        let select_all_docs = db.all().then((docs) => {
+                            console.log('Selected all documents:', docs);
+                            ws.send(JSON.stringify({'select_all': docs}));
+                        }).catch((error) => {
+                            console.error('Error selecting all documents:', error);
+                            ws.send('Error selecting all documents');
+                        });
                         break;
                     case 'delete':
                         // Handle delete by ID logic
@@ -405,6 +416,11 @@ async function run(options) {
     //     console.log('Connected to ingest server');
     // }
 }
+
+async function validate(data) {
+    return true
+}
+
 async function handleTerminationSignal() {
     console.info('received termination signal, cleaning up and exiting...');
     await db.close()

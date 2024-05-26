@@ -7,6 +7,8 @@ import asyncio
 from config import config
 import json
 from websocket_kit import WebSocketClient
+import datetime
+import time
 
 class orbitdb_kit():
     def __init__(self,  resources=None, meta=None):
@@ -91,7 +93,7 @@ class orbitdb_kit():
         # start_orbitdb = process.Popen(start_cmd, shell=True)
         # start_orbitdb = process.run(start_cmd, stdout=process.PIPE, stderr=process.PIPE)
         # pause for 5 seconds to allow orbitdb to start
-        asyncio.get_event_loop().run_until_complete(asyncio.sleep(15))
+        asyncio.get_event_loop().run_until_complete(asyncio.sleep(5))
         asyncio.get_event_loop().run_until_complete(self.connect_orbitdb())
         return start_orbitdb
         pass
@@ -109,48 +111,64 @@ class orbitdb_kit():
         return self.ws
     
     def on_pong_message(self, ws, message):
+        self.pong = message['pong']
         pass
 
-    def on_ping_message(self, ws, message):
+    def on_ping_message(self, ws, recv):
+        self.ping = recv['ping']
         pass
 
-    def on_peers_message(self, ws, message):
-        pass
+    def on_peers_message(self, ws, recv):
+        self.peers = recv['peers']
+        return self.peers
+    
+    def select_all(self, ws, recv):
+        self.orbitdb = recv['select_all']
+        return self.orbitdb
+    
+    def insert(self, ws, recv):
+        insert_key = recv['insert'].keys()[0]
+        insert_value = recv['insert'][insert_key]
+        self.orbitdb[insert_key] = insert_value
+        return {insert_key: insert_value}
 
     def on_message(self, ws, message):
         print(f"Received message: message = '{message}')")
         recv = json.loads(message)
+        results = ""
         if 'pong' in recv:
-            message = self.on_pong_message(
-                ws, json.dumps({
-                    'pong': recv['pong']
-                })
+            results = self.on_pong_message(
+                ws, recv
             )
             
         if 'ping' in recv:
-            message = self.on_ping_message(
-                ws, json.dumps({
-                    'ping': recv['ping']
-                })
+            results = self.on_ping_message(
+                ws, recv
             )
 
         if 'peers' in recv:
-            message = self.on_peers_message(
-                ws, json.dumps({
-                    'peers': recv['peers']
-                })
+            results = self.on_peers_message(
+                ws, recv
+            )
+        
+        if 'insert' in recv:
+            results = self.insert(
+                ws, recv
+            )
+        
+        if 'select_all' in recv:
+            results = self.select_all(
+                ws, recv
             )
 
-        ws_recv = json.loads(message)
-        print(ws_recv)
-
-        return message
+        print(results)
+        return results
     
     def on_error(self, ws, error):
         print(f"Error occurred: {error}")
         return error
 
-    def on_close(self, ws):
+    def on_close(self, ws, arg1, arg2):
         print("Connection closed")
         return ws
     
@@ -164,7 +182,30 @@ class orbitdb_kit():
             'peers': 'ls'
         }))
         ws.send(json.dumps({
-            'ping': 'pong'
+            'ping': datetime.datetime.now().isoformat()
+        }))
+        ws.send(json.dumps({
+            'insert': {
+                'test': 'test document'
+            }
+        }))
+        ws.send(json.dumps({
+            'insert': {
+                'test1': 'test document'
+            }
+        }))
+        ws.send(json.dumps({
+            'insert': {
+                'test2': 'test document'
+            }
+        }))
+        ws.send(json.dumps({
+            'insert': {
+                'test3': 'test document'
+            }
+        }))
+        ws.send(json.dumps({
+            'select_all':  "*"
         }))
         results = self.main()
         print(results)
