@@ -287,12 +287,13 @@ async function run(options) {
                         console.log('Inserting data: ', insertKey, insertValue);
                         validate(insertValue).then((result) => {
                             if (result) {
-                                db.put(insertDoc).then(() => {
+                                db.put(insertDoc).then((results) => {
                                     console.log('Data inserted:', data);
-                                    ws.send({"insert": {insertKey: insertValue}});
+                                    insertDoc = { value: {_id: insertKey, content: insertValue}, key: insertKey,  hash: results};
+                                    ws.send(JSON.stringify({"insert": insertDoc}));
                                 }).catch((error) => {
                                     console.error('Error inserting data:', error);
-                                    ws.send('Error inserting data');
+                                    ws.send('Error inserting data' + error);
                                 });
                             }
                             else{
@@ -303,25 +304,33 @@ async function run(options) {
                         break;
                     case 'update':
                         // Handle update logic
-                        let updateKey = data._id;
-                        let updateValue = data.content;
-                        let updatedDoc = {_id: updateKey, content: updateValue};
+                        let update = data;
+                        let updateKey = Object.keys(update)[0];
+                        let updateValue = update[updateKey];
+                        let updateDoc = { value: {_id: updateKey, content: updateValue}, key: updateKey}; 
                         let docToUpdate = db.get(updateKey).then((doc) => {
-                            validate(updatedDoc).then((result) => {
-                                db.put(updatedDoc).then(() => {
-                                    console.log('Data updated:', data);
-                                    ws.send('Data updates');
-                                }).catch((error) => {
-                                    console.error('Error updating data:', error);
-                                    ws.send('Error updating data');
-                                });
+                            validate(doc).then((result) => {
+                                if (result == true && doc.key == updateKey) {
+                                    updateDoc = { value: {_id: updateKey, content: updateValue}, key: updateKey, hash: doc.hash};
+
+                                    db.put(updateDoc).then(() => {
+                                        console.log('Data updated:', data);
+                                        ws.send('Data updates');
+                                    }).catch((error) => {
+                                        console.error('Error updating data:', error);
+                                        ws.send('Error updating data');
+                                    });
+                                }
+                                else{
+                                    console.error('Data validation failed:', doc, result);
+                                    ws.send(JSON.stringify({'error' : {'Data validation failed' : {'doc': doc, 'result': result}}}));
+                                }
                             }).catch((error) => {
                                 console.error('Error updating data:', error);
-                                ws.send('Error updating data');
-                            })
+                                ws.send(JSON.stringify({'error' : {'Error updating document' : error}}));                      })
                         }).catch((error) => {
-                            console.error('Error upfating document:', error);
-                            ws.send('Error updating document');
+                            console.error('Error updating document:', error);
+                            ws.send(JSON.stringify({'error' : {'Error updating document' : error}}));
                         });
                         break;
                     case 'select':

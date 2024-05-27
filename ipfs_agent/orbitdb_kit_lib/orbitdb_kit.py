@@ -126,11 +126,33 @@ class orbitdb_kit():
         self.orbitdb = recv['select_all']
         return self.orbitdb
     
+    def orbitdb_hash_list(self, ws, recv):
+        hash_list = list(map(lambda x: x['hash'], self.orbitdb))
+        return hash_list
+
     def insert(self, ws, recv):
-        insert_key = recv['insert'].keys()[0]
-        insert_value = recv['insert'][insert_key]
-        self.orbitdb[insert_key] = insert_value
-        return {insert_key: insert_value}
+        hash_list = self.orbitdb_hash_list(ws, recv)
+        insert = recv['insert']
+        hash = insert['hash']
+        if hash not in hash_list:
+            self.orbitdb.append(insert)
+
+    def update(self, ws, recv):
+        hash_list = self.orbitdb_hash_list(ws, recv)
+        update = recv['update']
+        hash = update['hash']
+        if hash in hash_list:
+            index = hash_list.index(hash)
+            self.orbitdb[index] = update
+        
+    def delete(self, ws, recv):
+        hash_list = self.orbitdb_hash_list(ws, recv)
+        delete = recv['delete']
+        hash = delete['hash']
+        if hash in hash_list:
+            index = hash_list.index(hash)
+            self.orbitdb.pop(index)
+
 
     def on_message(self, ws, message):
         print(f"Received message: message = '{message}')")
@@ -160,6 +182,18 @@ class orbitdb_kit():
             results = self.select_all(
                 ws, recv
             )
+        
+        if 'update' in recv:
+            results = self.update(
+                ws, recv
+            )
+        
+        if 'delete' in recv:
+            results = self.delete(
+                ws, recv
+            )
+        
+
 
         print(results)
         return results
@@ -204,6 +238,30 @@ class orbitdb_kit():
                 'test3': 'test document'
             }
         }))
+
+
+        ws.send(json.dumps({
+            'update': {
+                'test': 'update document'
+            }
+        }))
+        ws.send(json.dumps({
+            'update': {
+                'test1': 'update document'
+            }
+        }))
+        ws.send(json.dumps({
+            'update': {
+                'test2': 'update document'
+            }
+        }))
+        ws.send(json.dumps({
+            'update': {
+                'test3': 'update document'
+            }
+        }))
+
+
         ws.send(json.dumps({
             'select_all':  "*"
         }))
