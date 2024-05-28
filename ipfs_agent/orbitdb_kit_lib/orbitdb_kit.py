@@ -177,7 +177,37 @@ class orbitdb_kit():
             raise Exception("key does not exist")
         
         return update
-        
+    
+    def on_select_handler(self, ws, recv):
+        select = recv['select']
+        select_key = select['key']
+        select_hash = select["hash"]
+        hash_list = self.hash_list
+        key_list = self.key_list
+        if select_hash not in hash_list and select_key in key_list:
+            self.hash_list.append(select_hash)
+            index = key_list.index(select_key)
+            self.orbitdb.pop(index)
+            self.orbitdb.append(select)
+            # remove old hash and append new one
+        if select_key not in self.key_list and select_hash in self.hash_list:
+            self.key_list.append(select_key)
+            self.key_hash_dict[select_key] = select_hash
+            self.orbitdb.append(select)
+        if select_key not in self.key_list and select_hash not in self.hash_list:
+            self.key_list.append(select_key)
+            self.hash_list.append(select_hash)
+            self.key_hash_dict[select_key] = select_hash
+            self.orbitdb.append(select)
+        if select_key in self.key_list and select_hash in self.hash_list:
+            index = key_list.index(select_key)
+            self.orbitdb.pop(index)
+            self.orbitdb.append(select)
+            hash_list.pop(hash_list.index(select_hash))
+            key_list.pop(key_list.index(select_key))
+            pass
+        return select
+
     def on_delete_handler(self, ws, recv):
         hash_list = self.hash_list
         key_list = self.key_list
@@ -191,7 +221,7 @@ class orbitdb_kit():
             del(hash_dict[hash_key])
             hash_list.pop(hash_list.index(delete_hash))
             key_list.pop(key_list.index(hash_key))
-            return delete_hash
+            return { 'delete' : {"hash": delete_hash, "key": hash_key}}
         else:
             raise Exception("hash does not exist")
 
@@ -244,6 +274,11 @@ class orbitdb_kit():
         
         if 'delete' in recv:
             results = self.on_delete_handler(
+                ws, recv
+            )
+
+        if 'select' in recv:
+            results = self.on_select_handler(
                 ws, recv
             )
         
@@ -323,17 +358,17 @@ class orbitdb_kit():
         #     'ping': datetime.datetime.now().isoformat()
         # }))
 
-        peers = self.peers_ls_request(ws)
+        # peers = self.peers_ls_request(ws)
 
-        select_all = self.select_all_request(ws)
+        # select_all = self.select_all_request(ws)
 
-        insert = self.insert_request(ws, {"test": "test document"})
+        # insert = self.insert_request(ws, {"test": "test document"})
 
-        update = self.update_request(ws, {"test": "update document"})
+        # update = self.update_request(ws, {"test": "update document"})
 
         select = self.select_request(ws, "test")
 
-        delete = self.delete_request(ws, "test")
+        # delete = self.delete_request(ws, "test")
 
         # ws.send(json.dumps({
         #     'insert': {

@@ -341,7 +341,7 @@ async function run(options) {
                         break;
                     case 'select':
                         // Handle select logic
-                        let selectID = data.key;
+                        let selectID = data;
                         let docToSelect = db.get(selectID).then((doc) => {
                             console.log('Selected document:', doc);
                             ws.send(JSON.stringify({'select': doc}));
