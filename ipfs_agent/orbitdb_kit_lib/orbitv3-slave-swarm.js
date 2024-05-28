@@ -362,12 +362,12 @@ async function run(options) {
                         break;
                     case 'delete':
                         // Handle delete by ID logic
-                        let deleteId = data.key;
+                        let deleteId = data;
                         let docToDelete = db.get(deleteId).then((doc) => {
                             if (doc != undefined) {
                                 db.del(deleteId).then((deletedDoc) => {
-                                    console.log(JSON.stringify({'delete': deletedDoc}));
-                                    ws.send(JSON.stringify({'delete': deletedDoc}));
+                                    console.log(JSON.stringify({'delete': doc}));
+                                    ws.send(JSON.stringify({'delete': doc}));
                                 }).catch((error) => {
                                     console.error(JSON.stringify({ 'error' : { 'Error deleting document': { 'error' : error, "doc": doc}}}));
                                     ws.send(JSON.stringify({ 'error' : { 'Error deleting document': { 'error' : error, "doc": doc}}}));

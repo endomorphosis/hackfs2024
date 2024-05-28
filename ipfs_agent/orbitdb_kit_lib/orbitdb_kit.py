@@ -366,9 +366,9 @@ class orbitdb_kit():
 
         # update = self.update_request(ws, {"test": "update document"})
 
-        select = self.select_request(ws, "test")
+        # select = self.select_request(ws, "test")
 
-        # delete = self.delete_request(ws, "test")
+        delete = self.delete_request(ws, "test")
 
         # ws.send(json.dumps({
         #     'insert': {
