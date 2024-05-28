@@ -22,6 +22,10 @@ class orbitdb_kit():
         self.state = {
             "status": "disconnected"
         }
+        self.hash_list = []
+        self.key_list = []
+        self.key_hash_dict = {}
+        self.orbitdb = []
         self.ws = None
         self.url = None
         self.this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -123,41 +127,91 @@ class orbitdb_kit():
         return self.peers
     
     def select_all(self, ws, recv):
-        self.orbitdb = recv['select_all']
+        # self.orbitdb = recv['select_all']
+        self.hash_list = self.orbitdb_hash_list(ws, recv)
+        self.key_list = self.orbitdb_key_list(ws, recv)
+        self.key_hash_dict = self.orbitdb_key_hash_dict(ws, recv)
         return self.orbitdb
     
     def orbitdb_hash_list(self, ws, recv):
         hash_list = list(map(lambda x: x['hash'], self.orbitdb))
         return hash_list
+    
+    def orbitdb_key_list(self, ws, recv):
+        key_list = list(map(lambda x: x['key'], self.orbitdb))
+        return key_list
+    
+    def orbitdb_key_hash_dict(self, ws, recv):
+        key_hash_dict = dict(map(lambda x: (x['key'], x['hash']), self.orbitdb))
+        return key_hash_dict
 
-    def insert(self, ws, recv):
-        hash_list = self.orbitdb_hash_list(ws, recv)
+    def on_insert_handler(self, ws, recv):
+        hash_list = self.hash_list
         insert = recv['insert']
         hash = insert['hash']
-        if hash not in hash_list:
+        key = insert['key']
+        if hash in hash_list:
+            raise Exception("hash already exists")
+        if key in self.key_list:
+            raise Exception("key already exists")
+
+        if hash not in hash_list and key not in self.key_list:
+            self.hash_list.append(hash)
+            self.key_list.append(key)
+            self.key_hash_dict[key] = hash
             self.orbitdb.append(insert)
-
-    def update(self, ws, recv):
-        hash_list = self.orbitdb_hash_list(ws, recv)
+            
+        return insert
+    
+    def on_update_handler(self, ws, recv):
+        self.hash_list = self.orbitdb_hash_list(ws, recv)
+        self.key_list = self.orbitdb_key_list(ws, recv)
+        self.key_hash_dict = self.orbitdb_key_hash_dict(ws, recv)
         update = recv['update']
-        hash = update['hash']
-        if hash in hash_list:
-            index = hash_list.index(hash)
-            self.orbitdb[index] = update
+        update_key = update['key']
+        if update_key in self.key_list:
+            rm_hash = self.key_hash_dict[update_key]
+            rm_index = self.key_hash_list.index(rm_hash)
+            self.orbitdb.pop(rm_index)
+            self.orbitdb.append(update)
+            del(self.key_hash_dict[update_key])
+            self.hash_list.pop(self.hash_list.index(rm_hash))
+            self.key_list.pop(self.key_list.index(update_key))
+            self.key_hash_dict[update_key] = update['hash']
+            self.hash_list.append(update['hash'])
+            self.key_list.append(update_key)
+        else:
+            raise Exception("key does not exist")
         
-    def delete(self, ws, recv):
-        hash_list = self.orbitdb_hash_list(ws, recv)
-        delete = recv['delete']
-        hash = delete['hash']
-        if hash in hash_list:
-            index = hash_list.index(hash)
-            self.orbitdb.pop(index)
-
+        return update
+        
+    def on_delete_handler(self, ws, recv):
+        hash_list = self.hash_list
+        key_list = self.key_list
+        hash_dict = self.key_hash_dict
+        delete_hash = recv['delete']
+        if delete_hash in hash_list:
+            hash_index = hash_list.index(delete_hash)
+            hash_key = key_list[hash_index]
+            orbit_db_index = hash_list.index(hash_key)
+            self.orbitdb.pop(orbit_db_index)
+            del(hash_dict[hash_key])
+            hash_list.pop(hash_list.index(delete_hash))
+            key_list.pop(key_list.index(hash_key))
+            return delete_hash
+        else:
+            raise Exception("hash does not exist")
 
     def on_message(self, ws, message):
         print(f"Received message: message = '{message}')")
         recv = json.loads(message)
         results = ""
+
+        if "error" in recv:
+            results = self.on_error(
+                ws, recv['error']
+            )
+
         if 'pong' in recv:
             results = self.on_pong_message(
                 ws, recv
@@ -174,7 +228,7 @@ class orbitdb_kit():
             )
         
         if 'insert' in recv:
-            results = self.insert(
+            results = self.on_insert_handler(
                 ws, recv
             )
         
@@ -184,18 +238,16 @@ class orbitdb_kit():
             )
         
         if 'update' in recv:
-            results = self.update(
+            results = self.on_update_handler(
                 ws, recv
             )
         
         if 'delete' in recv:
-            results = self.delete(
+            results = self.on_delete_handler(
                 ws, recv
             )
         
-
-
-        print(results)
+        print("results",  results)
         return results
     
     def on_error(self, ws, error):
@@ -206,65 +258,102 @@ class orbitdb_kit():
         print("Connection closed")
         return ws
     
+    def peers_ls_request(self, ws):
+        ws.send(json.dumps({
+            'peers': 'ls'
+        }))
+        return self.peers
+    
+    def select_all_request(self, ws):
+        ws.send(json.dumps({
+            'select_all':  "*"
+        }))
+        return self.orbitdb
+    
+    def insert_request(self, ws, data):
+        if type(data) is not dict:
+            raise Exception("data must be a dictionary")
+        if data.keys().length != 1:
+            raise Exception("data must have exactly one key")
+        ws.send(json.dumps({
+            'insert': {
+                data
+            }
+        }))
+        return True
+    
+    def update_request(self, ws, data):
+        if type(data) is not dict:
+            raise Exception("data must be a dictionary")
+        if data.keys().length != 1:
+            raise Exception("data must have exactly one key")
+        ws.send(json.dumps({
+            'update': {
+                data
+            }
+        }))
+        return True
+    
+    def delete_request(self, ws, data):
+        if type(data) is not dict:
+            raise Exception("data must be a dictionary")
+        if data.keys().length != 1:
+            raise Exception("data must have exactly one key")
+        if type(data[data.keys()[0]]) is not str:
+            raise Exception("data value must be a string")
+        ws.send(json.dumps({
+            'delete': {
+                data
+            }
+        }))
+        return True
+
+    def select_request(self, ws, data):
+        if type(data) is not dict:
+            raise Exception("data must be a dictionary")
+        if data.keys().length != 1:
+            raise Exception("data must have exactly one key")
+        if type(data[data.keys()[0]]) is not str:
+            raise Exception("data value must be a string")
+        ws.send(json.dumps({
+            'delete': {
+                data
+            }
+        }))
+        return True
+    
     def on_open(self, ws):
         print('connection accepted')
         # ws.send(json.dumps({
         #     'event': 'init',
         #     'status': self.state['status']
         # }))
-        ws.send(json.dumps({
-            'peers': 'ls'
-        }))
-        ws.send(json.dumps({
-            'ping': datetime.datetime.now().isoformat()
-        }))
+
+        # ws.send(json.dumps({
+        #     'peers': 'ls'
+        # }))
+        # ws.send(json.dumps({
+        #     'ping': datetime.datetime.now().isoformat()
+        # }))
+        peers = self.peers_ls_request(ws)
+
+        select_all = self.select_all_request(ws, "*")
+
+        insert = self.insert_request(ws, {"test": "test document"})
+
+        update = self.update_request(ws, {"test": "update document"})
+
+        delete = self.select_request(ws, "test")
+
+        delete = self.delete_request(ws, "test")
+
         ws.send(json.dumps({
             'insert': {
                 'test': 'test document'
             }
         }))
-        ws.send(json.dumps({
-            'insert': {
-                'test1': 'test document'
-            }
-        }))
-        ws.send(json.dumps({
-            'insert': {
-                'test2': 'test document'
-            }
-        }))
-        ws.send(json.dumps({
-            'insert': {
-                'test3': 'test document'
-            }
-        }))
 
 
-        ws.send(json.dumps({
-            'update': {
-                'test': 'update document'
-            }
-        }))
-        ws.send(json.dumps({
-            'update': {
-                'test1': 'update document'
-            }
-        }))
-        ws.send(json.dumps({
-            'update': {
-                'test2': 'update document'
-            }
-        }))
-        ws.send(json.dumps({
-            'update': {
-                'test3': 'update document'
-            }
-        }))
-
-
-        ws.send(json.dumps({
-            'select_all':  "*"
-        }))
         results = self.main()
         print(results)
         return results
@@ -327,7 +416,7 @@ class orbitdb_kit():
         finally:
             pass
 
-    def select_all_orbitdb(self, args = None):
+    def select_all_orbitdb(self, ws,  args = None):
         try:
             results = self.send_recv('select_all', None, args)
             return results

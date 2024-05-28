@@ -244,14 +244,17 @@ async function run(options) {
                         let ping_peers_list = [];
                         let ping_peers_time = {}
                         for (let peer of ping_peers) {
+                            setTimeout(() => {
+                                console.log('Pinging peer:', peer[0]);
+                            }, 1000);
                             let begin = Date.now();
                             console.log('Pinging peer:', peer[0]);
                             ping_peers_list.push(peer[0]);
                             let end = Date.now();
                             ping_peers_time[peer[0]] = end - begin;
                         }                        
-                        let ping_peers_time_string = JSON.stringify({'pong' : ping_peers_time});
-                        ws.send(ping_peers_time_string);
+                        // let ping_peers_time_string = JSON.stringify({'pong' : ping_peers_time});
+                        // ws.send(ping_peers_time_string);
                         break;
 
                     case 'peers' :
@@ -307,23 +310,26 @@ async function run(options) {
                         let update = data;
                         let updateKey = Object.keys(update)[0];
                         let updateValue = update[updateKey];
-                        let updateDoc = { value: {_id: updateKey, content: updateValue}, key: updateKey}; 
+                        let updateDoc = { value: {"_id": updateKey, "content": updateValue}, "key": updateKey}; 
                         let docToUpdate = db.get(updateKey).then((doc) => {
                             validate(doc).then((result) => {
-                                if (result == true && doc.key == updateKey) {
-                                    updateDoc = { value: {_id: updateKey, content: updateValue}, key: updateKey, hash: doc.hash};
-
-                                    db.put(updateDoc).then(() => {
-                                        console.log('Data updated:', data);
-                                        ws.send('Data updates');
+                                if (result == true && doc.key == updateKey && doc.value.content != updateDoc.value.content) {
+                                    updateDoc = { "_id" : updateKey, "content": updateValue };
+                                    db.put(updateDoc).then((results) => {
+                                        updateDoc = { value: {"_id": updateKey, "content": updateValue}, "key": updateKey, "hash": results}; 
+                                        console.log('Data updated:', updateDoc);
+                                        ws.send(JSON.stringify({"update": updateDoc}));
                                     }).catch((error) => {
                                         console.error('Error updating data:', error);
-                                        ws.send('Error updating data');
+                                        ws.send(json.stringify({'error': 'error updating data'}));
                                     });
+                                }else if (result == true && doc.key == updateKey && doc.value.content == updateDoc.value.content){
+                                    console.log('Data already up to date:', updateDoc);
+                                    ws.send(JSON.stringify({"error":'Data already up to date', 'doc': updateDoc}));
                                 }
                                 else{
                                     console.error('Data validation failed:', doc, result);
-                                    ws.send(JSON.stringify({'error' : {'Data validation failed' : {'doc': doc, 'result': result}}}));
+                                    ws.send(JSON.stringify({'error' : {'Data validation failed' : {'doc' : updateDoc, 'result': result}}}));
                                 }
                             }).catch((error) => {
                                 console.error('Error updating data:', error);
@@ -356,18 +362,24 @@ async function run(options) {
                         break;
                     case 'delete':
                         // Handle delete by ID logic
-                        let deleteId = data._id;
+                        let deleteId = data.key;
                         let docToDelete = db.get(deleteId).then((doc) => {
-                            db.del(deleteId).then((deletedDoc) => {
-                                console.log('Document deleted:', deletedDoc);
-                                ws.send('Document deleted');
-                            }).catch((error) => {
-                                console.error('Error deleting document:', error);
-                                ws.send('Error deleting document');
-                            });
+                            if (doc != undefined) {
+                                db.del(deleteId).then((deletedDoc) => {
+                                    console.log(JSON.stringify({'delete': deletedDoc}));
+                                    ws.send(JSON.stringify({'delete': deletedDoc}));
+                                }).catch((error) => {
+                                    console.error(JSON.stringify({'error': {'Error deleting document': error, "doc": doc}}));
+                                    ws.send(JSON.stringify({'error': {'Error deleting document': error, "doc": doc}}));
+                                });
+                            }
+                            else{
+                                console.error('Document not found:', deleteId);
+                                ws.send(JSON.stringify({'error': {'Document not found': deleteId}}));
+                            }
                         }).catch((error) => {
-                            console.error('Error deleting document:', error);
-                            ws.send('Error deleting document');
+                            console.error(JSON.stringify({'error': {'Error deleting document': error, "deleteId": deleteId}}))
+                            ws.send(JSON.stringify({'error': {'Error deleting document': error, "deleteId": deleteId}}));
                         });
                         break;
                     default:
