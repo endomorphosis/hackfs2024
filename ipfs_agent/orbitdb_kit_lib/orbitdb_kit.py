@@ -126,13 +126,6 @@ class orbitdb_kit():
         self.peers = recv['peers']
         return self.peers
     
-    def select_all(self, ws, recv):
-        # self.orbitdb = recv['select_all']
-        self.hash_list = self.orbitdb_hash_list(ws, recv)
-        self.key_list = self.orbitdb_key_list(ws, recv)
-        self.key_hash_dict = self.orbitdb_key_hash_dict(ws, recv)
-        return self.orbitdb
-    
     def orbitdb_hash_list(self, ws, recv):
         hash_list = list(map(lambda x: x['hash'], self.orbitdb))
         return hash_list
@@ -151,9 +144,9 @@ class orbitdb_kit():
         hash = insert['hash']
         key = insert['key']
         if hash in hash_list:
-            raise Exception("hash already exists")
+            raise Exception("hash already exists", hash)
         if key in self.key_list:
-            raise Exception("key already exists")
+            raise Exception("key already exists", key)
 
         if hash not in hash_list and key not in self.key_list:
             self.hash_list.append(hash)
@@ -171,7 +164,7 @@ class orbitdb_kit():
         update_key = update['key']
         if update_key in self.key_list:
             rm_hash = self.key_hash_dict[update_key]
-            rm_index = self.key_hash_list.index(rm_hash)
+            rm_index = self.key_list.index(update_key)
             self.orbitdb.pop(rm_index)
             self.orbitdb.append(update)
             del(self.key_hash_dict[update_key])
@@ -201,6 +194,13 @@ class orbitdb_kit():
             return delete_hash
         else:
             raise Exception("hash does not exist")
+
+    def on_select_all_handler(self, ws, recv):
+        self.orbitdb = recv['select_all']
+        self.hash_list = self.orbitdb_hash_list(ws, recv)
+        self.key_list = self.orbitdb_key_list(ws, recv)
+        self.key_hash_dict = self.orbitdb_key_hash_dict(ws, recv)
+        return self.orbitdb
 
     def on_message(self, ws, message):
         print(f"Received message: message = '{message}')")
@@ -233,7 +233,7 @@ class orbitdb_kit():
             )
         
         if 'select_all' in recv:
-            results = self.select_all(
+            results = self.on_select_all_handler(
                 ws, recv
             )
         
@@ -268,62 +268,49 @@ class orbitdb_kit():
         ws.send(json.dumps({
             'select_all':  "*"
         }))
-        return self.orbitdb
+        return True
     
     def insert_request(self, ws, data):
+        data_keys = list(data.keys())
         if type(data) is not dict:
             raise Exception("data must be a dictionary")
-        if data.keys().length != 1:
+        if len(data_keys) != 1:
             raise Exception("data must have exactly one key")
         ws.send(json.dumps({
-            'insert': {
-                data
-            }
+            'insert': data
         }))
         return True
     
     def update_request(self, ws, data):
+        data_keys = list(data.keys())
         if type(data) is not dict:
             raise Exception("data must be a dictionary")
-        if data.keys().length != 1:
+        if len(data_keys) != 1:
             raise Exception("data must have exactly one key")
         ws.send(json.dumps({
-            'update': {
-                data
-            }
+            'update': data
         }))
         return True
     
     def delete_request(self, ws, data):
-        if type(data) is not dict:
-            raise Exception("data must be a dictionary")
-        if data.keys().length != 1:
-            raise Exception("data must have exactly one key")
-        if type(data[data.keys()[0]]) is not str:
+        if type(data) is not str:
             raise Exception("data value must be a string")
         ws.send(json.dumps({
-            'delete': {
-                data
-            }
+            'delete': data
         }))
         return True
 
     def select_request(self, ws, data):
-        if type(data) is not dict:
-            raise Exception("data must be a dictionary")
-        if data.keys().length != 1:
-            raise Exception("data must have exactly one key")
-        if type(data[data.keys()[0]]) is not str:
+        if type(data) is not str:
             raise Exception("data value must be a string")
         ws.send(json.dumps({
-            'delete': {
-                data
-            }
+            'select': data
         }))
         return True
     
     def on_open(self, ws):
         print('connection accepted')
+
         # ws.send(json.dumps({
         #     'event': 'init',
         #     'status': self.state['status']
@@ -335,24 +322,24 @@ class orbitdb_kit():
         # ws.send(json.dumps({
         #     'ping': datetime.datetime.now().isoformat()
         # }))
+
         peers = self.peers_ls_request(ws)
 
-        select_all = self.select_all_request(ws, "*")
+        select_all = self.select_all_request(ws)
 
         insert = self.insert_request(ws, {"test": "test document"})
 
         update = self.update_request(ws, {"test": "update document"})
 
-        delete = self.select_request(ws, "test")
+        select = self.select_request(ws, "test")
 
         delete = self.delete_request(ws, "test")
 
-        ws.send(json.dumps({
-            'insert': {
-                'test': 'test document'
-            }
-        }))
-
+        # ws.send(json.dumps({
+        #     'insert': {
+        #         'test': 'test document'
+        #     }
+        # }))
 
         results = self.main()
         print(results)

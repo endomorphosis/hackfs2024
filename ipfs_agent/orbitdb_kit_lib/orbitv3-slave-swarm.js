@@ -295,13 +295,13 @@ async function run(options) {
                                     insertDoc = { value: {_id: insertKey, content: insertValue}, key: insertKey,  hash: results};
                                     ws.send(JSON.stringify({"insert": insertDoc}));
                                 }).catch((error) => {
-                                    console.error('Error inserting data:', error);
-                                    ws.send('Error inserting data' + error);
+                                    console.error(JSON.stringify({'error': {'Error inserting data' : {'error' : error}}}));
+                                    ws.send(JSON.stringify({'error': {'Error inserting data' : {'error' : error}}}));
                                 });
                             }
                             else{
-                                console.error('Data validation failed:', insertValue);
-                                ws.send('Data validation failed');
+                                console.error(JSON.stringify({ 'error' : { 'Insert Data validation failed' : { "value" : insertValue }}}));
+                                ws.send(JSON.stringify({ 'error' : { 'Insert Data validation failed' : { "value" : insertValue }}}));
                             }
                         });
                         break;
@@ -321,11 +321,11 @@ async function run(options) {
                                         ws.send(JSON.stringify({"update": updateDoc}));
                                     }).catch((error) => {
                                         console.error('Error updating data:', error);
-                                        ws.send(json.stringify({'error': 'error updating data'}));
+                                        ws.send(json.stringify({'error' : { 'error updating data' : { 'doc': updateDoc, 'error': error}}}));
                                     });
                                 }else if (result == true && doc.key == updateKey && doc.value.content == updateDoc.value.content){
                                     console.log('Data already up to date:', updateDoc);
-                                    ws.send(JSON.stringify({"error":'Data already up to date', 'doc': updateDoc}));
+                                    ws.send(JSON.stringify({'error' : { 'Data already up to date' : { 'doc': updateDoc , 'key': updateKey}}}));
                                 }
                                 else{
                                     console.error('Data validation failed:', doc, result);
@@ -333,21 +333,21 @@ async function run(options) {
                                 }
                             }).catch((error) => {
                                 console.error('Error updating data:', error);
-                                ws.send(JSON.stringify({'error' : {'Error updating document' : error}}));                      })
+                                ws.send(JSON.stringify({'error' : {'Error updating document' : {'error': error}}}));                      })
                         }).catch((error) => {
                             console.error('Error updating document:', error);
-                            ws.send(JSON.stringify({'error' : {'Error updating document' : error}}));
+                            ws.send(JSON.stringify({'error' : {'Error updating document' : {'error': error}}}));
                         });
                         break;
                     case 'select':
                         // Handle select logic
-                        let selectID = data._id;
+                        let selectID = data.key;
                         let docToSelect = db.get(selectID).then((doc) => {
                             console.log('Selected document:', doc);
-                            ws.send(JSON.stringify(doc));
+                            ws.send(JSON.stringify({'select': doc}));
                         }).catch((error) => {
-                            console.error('Error selecting document:', error);
-                            ws.send('Error selecting document');
+                            console.error(JSON.stringify({'error':{'Error selecting document': {'selectID' : selectID ,  'error': error}}}));
+                            ws.send(JSON.stringify({'error':{'Error selecting document': {'selectID' : selectID ,  'error': error}}}));
                         })
                         break;
                     case 'select_all':
@@ -356,8 +356,8 @@ async function run(options) {
                             console.log('Selected all documents:', docs);
                             ws.send(JSON.stringify({'select_all': docs}));
                         }).catch((error) => {
-                            console.error('Error selecting all documents:', error);
-                            ws.send('Error selecting all documents');
+                            console.error(json.stringify({ 'error' : { 'Error selecting all documents' : { 'error' : error }}}));
+                            ws.send(json.stringify({ 'error' : { 'Error selecting all documents' : { 'error' : error }}}));
                         });
                         break;
                     case 'delete':
@@ -369,17 +369,17 @@ async function run(options) {
                                     console.log(JSON.stringify({'delete': deletedDoc}));
                                     ws.send(JSON.stringify({'delete': deletedDoc}));
                                 }).catch((error) => {
-                                    console.error(JSON.stringify({'error': {'Error deleting document': error, "doc": doc}}));
-                                    ws.send(JSON.stringify({'error': {'Error deleting document': error, "doc": doc}}));
+                                    console.error(JSON.stringify({ 'error' : { 'Error deleting document': { 'error' : error, "doc": doc}}}));
+                                    ws.send(JSON.stringify({ 'error' : { 'Error deleting document': { 'error' : error, "doc": doc}}}));
                                 });
                             }
                             else{
-                                console.error('Document not found:', deleteId);
-                                ws.send(JSON.stringify({'error': {'Document not found': deleteId}}));
+                                console.error(JSON.stringify({'error': { 'Document not found' : deleteId }}));
+                                ws.send(JSON.stringify({'error': { 'Document not found' : deleteId }}));
                             }
                         }).catch((error) => {
-                            console.error(JSON.stringify({'error': {'Error deleting document': error, "deleteId": deleteId}}))
-                            ws.send(JSON.stringify({'error': {'Error deleting document': error, "deleteId": deleteId}}));
+                            console.error(JSON.stringify({ 'error' : { 'Error deleting document' : { 'error' : error, "deleteId" : deleteId}}}))
+                            ws.send(JSON.stringify({ 'error' : { 'Error deleting document' : { 'error' : error, "deleteId" : deleteId}}}));
                         });
                         break;
                     default:
