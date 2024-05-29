@@ -6,7 +6,7 @@ import websockets as ws
 import asyncio
 from config import config
 import json
-from websocket_kit import WebSocketClient
+from .websocket_kit import WebSocketClient
 import datetime
 import time
 
@@ -102,17 +102,29 @@ class orbitdb_kit():
         return start_orbitdb
         pass
 
-    async def connect_orbitdb(self, args = None):
+    async def connect_orbitdb(self, callback_fn = None):
         self.url = 'ws://' + self.orbitdb_args['ipaddress'] + ':' + str(self.orbitdb_args['port'])
-        self.ws = WebSocketClient(self.url, 
-            {
-            "on_open" : self.on_open,
-            "on_message" : self.on_message,
-            "on_error" : self.on_error,
-            "on_close" : self.on_close
-            }
-        )
-        return self.ws
+
+        if (callback_fn is not None) and (callable(callback_fn)):
+            self.ws = WebSocketClient(self.url, 
+                {
+                "on_open" : self.on_open(callback_fn),
+                "on_message" : self.on_message,
+                "on_error" : self.on_error,
+                "on_close" : self.on_close
+                }
+            )
+            return self.ws
+        else:
+            self.ws = WebSocketClient(self.url, 
+                {
+                "on_open" : self.on_open,
+                "on_message" : self.on_message,
+                "on_error" : self.on_error,
+                "on_close" : self.on_close
+                }
+            )
+            return self.ws
     
     def on_pong_message(self, ws, message):
         self.pong = message['pong']
@@ -209,19 +221,16 @@ class orbitdb_kit():
         return select
 
     def on_delete_handler(self, ws, recv):
-        hash_list = self.hash_list
-        key_list = self.key_list
-        hash_dict = self.key_hash_dict
-        delete_hash = recv['delete']
-        if delete_hash in hash_list:
-            hash_index = hash_list.index(delete_hash)
-            hash_key = key_list[hash_index]
-            orbit_db_index = hash_list.index(hash_key)
+        delete_hash = recv['delete']['hash']
+        delete_key = recv['delete']['key']
+        if delete_hash in self.hash_list and delete_key in self.key_list:
+            key_hash = self.key_hash_dict[delete_key]
+            orbit_db_index = self.hash_list.index(key_hash)
             self.orbitdb.pop(orbit_db_index)
-            del(hash_dict[hash_key])
-            hash_list.pop(hash_list.index(delete_hash))
-            key_list.pop(key_list.index(hash_key))
-            return { 'delete' : {"hash": delete_hash, "key": hash_key}}
+            self.key_hash_dict.__delitem__(delete_key)
+            self.hash_list.pop(self.hash_list.index(delete_hash))
+            self.key_list.pop(self.key_list.index(delete_key))
+            return { 'delete' : {"hash": delete_hash, "key": key_hash}}
         else:
             raise Exception("hash does not exist")
 
@@ -233,7 +242,7 @@ class orbitdb_kit():
         return self.orbitdb
 
     def on_message(self, ws, message):
-        print(f"Received message: message = '{message}')")
+        # print(f"Received message: message = '{message}')")
         recv = json.loads(message)
         results = ""
 
@@ -282,7 +291,7 @@ class orbitdb_kit():
                 ws, recv
             )
         
-        print("results",  results)
+        # print("results",  results)
         return results
     
     def on_error(self, ws, error):
@@ -343,110 +352,21 @@ class orbitdb_kit():
         }))
         return True
     
-    def on_open(self, ws):
+    def on_open(self, ws, callback_fn = None):
         print('connection accepted')
-
-        # ws.send(json.dumps({
-        #     'event': 'init',
-        #     'status': self.state['status']
-        # }))
-
-        # ws.send(json.dumps({
-        #     'peers': 'ls'
-        # }))
-        # ws.send(json.dumps({
-        #     'ping': datetime.datetime.now().isoformat()
-        # }))
-
-        # peers = self.peers_ls_request(ws)
-
-        # select_all = self.select_all_request(ws)
-
+        print("url", self.url)
+        peers = self.peers_ls_request(ws)
+        select_all = self.select_all_request(ws)
         # insert = self.insert_request(ws, {"test": "test document"})
-
         # update = self.update_request(ws, {"test": "update document"})
-
         # select = self.select_request(ws, "test")
-
-        delete = self.delete_request(ws, "test")
-
-        # ws.send(json.dumps({
-        #     'insert': {
-        #         'test': 'test document'
-        #     }
-        # }))
-
-        results = self.main()
-        print(results)
+        # delete = self.delete_request(ws, "test")
+        if callback_fn is not None:
+            results = callback_fn(ws)
+        else:
+            results = ws
         return results
 
-
-    async def send_recv(self,data_type, data, args):
-        try:
-            payload = {
-                data_type: data
-            }
-            response = None
-            payload = json.dumps(payload)
-            if self.ws is not None:
-                self.ws.send(payload)
-                response = await self.ws.recv()
-            return response
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
-
-    async def insert_orbitdb(self, data, args = None):
-        try:
-            results = await self.send_recv('insert', data, args)
-            return results
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
-
-    def update_orbitdb(self, data, args = None):
-        try:
-            results = self.send_recv('update', data, args)
-            return results
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
-
-    def select_orbitdb(self, data, args = None):
-        try:
-            results = self.send_recv('select', data, args)
-            return results
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
-
-    def delete_orbitdb(self, data, args = None):
-        try:
-            results = self.send_recv('delete', data, args)
-            return results
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
-
-    def select_all_orbitdb(self, ws,  args = None):
-        try:
-            results = self.send_recv('select_all', None, args)
-            return results
-        except Exception as e:
-            print(e)
-            raise e
-        finally:
-            pass
 
     def stop_orbitdb(self, args = None):
         ps_orbitb_results = None
@@ -487,11 +407,15 @@ class orbitdb_kit():
         return self.resources
     
     def main(self):
-        print("main")
-        pass
+        # print("websocket client main()")
+        # print("main loop ()")
+        # while True:
+        #     time.sleep(5)
+        #     pass
+        return True
 
     async def test(self):
-        print("testing")
+        print("websocket client test()")
         await orbitdb_kit.connect_orbitdb()
     
 if __name__ == '__main__':

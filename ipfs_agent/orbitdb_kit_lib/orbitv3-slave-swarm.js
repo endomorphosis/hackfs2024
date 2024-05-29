@@ -363,6 +363,7 @@ async function run(options) {
                     case 'delete':
                         // Handle delete by ID logic
                         let deleteId = data;
+                        
                         let docToDelete = db.get(deleteId).then((doc) => {
                             if (doc != undefined) {
                                 db.del(deleteId).then((deletedDoc) => {
