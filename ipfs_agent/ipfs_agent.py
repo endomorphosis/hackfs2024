@@ -7,6 +7,10 @@ import asyncio
 
 class ipfs_agent:
     def __init__(self, resources=None, meta=None):
+        self.ls_models = {}
+        self.tools = {}
+        self.peers = {}
+        self.libp2p_services = {}
         if meta is None:
             meta = {}
             meta['config'] = 'config/config.toml'
