@@ -19,5 +19,7 @@ setup(
 		'boto3',
         'toml',
         'websocket-client',
+        'trio',
+        'multiaddr',
 	]
 )
