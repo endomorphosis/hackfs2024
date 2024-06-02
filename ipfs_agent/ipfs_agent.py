@@ -1,6 +1,7 @@
 import orbitdb_kit_lib as orbitdb_kit
 import ipfs_model_manager as ipfs_model_manager
 import libp2p_kit as libp2p_kit
+# import ipfs_accelerate as ipfs_accelerate
 import config as config
 import os
 import asyncio
@@ -28,6 +29,7 @@ class ipfs_agent:
         self.model_manager = ipfs_model_manager.ipfs_model_manager(resources, meta)
         self.orbitdb_kit = orbitdb_kit.orbitdb_kit(resources, meta)
         self.libp2p_kit = libp2p_kit.libp2p_kit(resources, meta)
+        # self.accelerate = ipfs_accelerate.ipfs_accelerate(resources, meta)
         pass
 
     async def __call__(self):
