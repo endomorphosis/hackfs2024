@@ -105,90 +105,96 @@ async function run () {
   console.info(`${new Date().toISOString()}running with db address ${db.address}`)
   const wss = new WebSocketServer({ port: 8888 })
     wss.on('connection', (ws) => {
-        console.log('New WebSocket connection');
-        ws.on('message', (message) => {
-            message = JSON.parse(message.toString());
-            console.log('Received message:', message);
-            let method = Object.keys(message)[0];
-            let data = message[method];
-            // Handle WebSocket messages here
-            switch (method) {
-                case 'insert':
-                    // Handle insert logic
-                    let insertKey = data._id;
-                    let insertValue = data.content;
-                    console.log('Inserting data: ', insertKey, insertValue);
-                    validate(insertValue).then((result) => {
-                        if (result) {
-                            db.put(data).then(() => {
-                                console.log('Data inserted:', data);
-                                ws.send('Data inserted');
-                            }).catch((error) => {
-                                console.error('Error inserting data:', error);
-                                ws.send('Error inserting data');
-                            });
-                        }
-                        else{
-                            console.error('Data validation failed:', insertValue);
-                            ws.send('Data validation failed');
-                        }
-                    });
-                    break;
-                case 'update':
-                    // Handle update logic
-                    let updateKey = data._id;
-                    let updateValue = data.content;
-                    let updatedDoc = {_id: updateKey, content: updateValue};
-                    let docToUpdate = db.get(updateKey).then((doc) => {
-                        validate(updatedDoc).then((result) => {
-                            db.put(updatedDoc).then(() => {
-                                console.log('Data updated:', data);
-                                ws.send('Data updates');
-                            }).catch((error) => {
-                                console.error('Error updating data:', error);
-                                ws.send('Error updating data');
-                            });
-                        }).catch((error) => {
-                            console.error('Error updating data:', error);
-                            ws.send('Error updating data');
-                        })
-                    }).catch((error) => {
-                        console.error('Error upfating document:', error);
-                        ws.send('Error updating document');
-                    });
-                    break;
-                case 'select':
-                    // Handle select logic
-                    let selectID = data._id;
-                    let docToSelect = db.get(selectID).then((doc) => {
-                        console.log('Selected document:', doc);
-                        ws.send(JSON.stringify(doc));
-                    }).catch((error) => {
-                        console.error('Error selecting document:', error);
-                        ws.send('Error selecting document');
-                    })
-                    break;
-                case 'delete':
-                    // Handle delete by ID logic
-                    let deleteId = data._id;
-                    let docToDelete = db.get(deleteId).then((doc) => {
-                        db.del(deleteId).then((deletedDoc) => {
-                            console.log('Document deleted:', deletedDoc);
-                            ws.send('Document deleted');
-                        }).catch((error) => {
-                            console.error('Error deleting document:', error);
-                            ws.send('Error deleting document');
-                        });
-                    }).catch((error) => {
-                        console.error('Error deleting document:', error);
-                        ws.send('Error deleting document');
-                    });
-                    break;
-                default:
-                    console.log('Unknown message:', message);
-                    break;
-            }
-        });
+        const ip = req.connection.remoteAddress;
+        if (ip === '127.0.0.1') {
+          console.log('New WebSocket connection');
+          ws.on('message', (message) => {
+              message = JSON.parse(message.toString());
+              console.log('Received message:', message);
+              let method = Object.keys(message)[0];
+              let data = message[method];
+              // Handle WebSocket messages here
+              switch (method) {
+                  case 'insert':
+                      // Handle insert logic
+                      let insertKey = data._id;
+                      let insertValue = data.content;
+                      console.log('Inserting data: ', insertKey, insertValue);
+                      validate(insertValue).then((result) => {
+                          if (result) {
+                              db.put(data).then(() => {
+                                  console.log('Data inserted:', data);
+                                  ws.send('Data inserted');
+                              }).catch((error) => {
+                                  console.error('Error inserting data:', error);
+                                  ws.send('Error inserting data');
+                              });
+                          }
+                          else{
+                              console.error('Data validation failed:', insertValue);
+                              ws.send('Data validation failed');
+                          }
+                      });
+                      break;
+                  case 'update':
+                      // Handle update logic
+                      let updateKey = data._id;
+                      let updateValue = data.content;
+                      let updatedDoc = {_id: updateKey, content: updateValue};
+                      let docToUpdate = db.get(updateKey).then((doc) => {
+                          validate(updatedDoc).then((result) => {
+                              db.put(updatedDoc).then(() => {
+                                  console.log('Data updated:', data);
+                                  ws.send('Data updates');
+                              }).catch((error) => {
+                                  console.error('Error updating data:', error);
+                                  ws.send('Error updating data');
+                              });
+                          }).catch((error) => {
+                              console.error('Error updating data:', error);
+                              ws.send('Error updating data');
+                          })
+                      }).catch((error) => {
+                          console.error('Error upfating document:', error);
+                          ws.send('Error updating document');
+                      });
+                      break;
+                  case 'select':
+                      // Handle select logic
+                      let selectID = data._id;
+                      let docToSelect = db.get(selectID).then((doc) => {
+                          console.log('Selected document:', doc);
+                          ws.send(JSON.stringify(doc));
+                      }).catch((error) => {
+                          console.error('Error selecting document:', error);
+                          ws.send('Error selecting document');
+                      })
+                      break;
+                  case 'delete':
+                      // Handle delete by ID logic
+                      let deleteId = data._id;
+                      let docToDelete = db.get(deleteId).then((doc) => {
+                          db.del(deleteId).then((deletedDoc) => {
+                              console.log('Document deleted:', deletedDoc);
+                              ws.send('Document deleted');
+                          }).catch((error) => {
+                              console.error('Error deleting document:', error);
+                              ws.send('Error deleting document');
+                          });
+                      }).catch((error) => {
+                          console.error('Error deleting document:', error);
+                          ws.send('Error deleting document');
+                      });
+                      break;
+                  default:
+                      console.log('Unknown message:', message);
+                      break;
+              }
+          });
+      } else {
+        console.log('Rejected WebSocket connection from:', ip);
+        ws.close();
+      }
     });
   console.info(`${new Date().toISOString()} getting updates ...`)
   db.events.on('update', async (entry) => {

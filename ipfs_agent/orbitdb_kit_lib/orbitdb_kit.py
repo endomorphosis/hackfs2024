@@ -6,7 +6,7 @@ import websockets as ws
 import asyncio
 from config import config
 import json
-from .websocket_kit import WebSocketClient
+from .websocket_kit import WebSocketClient as WebSocketClient
 import datetime
 import time
 
@@ -28,45 +28,65 @@ class orbitdb_kit():
         self.orbitdb = []
         self.ws = None
         self.url = None
+        self.orbitdb_args['ipaddress'] = None
+        self.orbitdb_args['orbitdbAddress'] = None
+        self.orbitdb_args['index'] = None
+        self.orbitdb_args['chunkSize'] = None
+        self.orbitdb_args['swarmName'] = None
+        self.orbitdb_args['port'] = None
         self.this_dir = os.path.dirname(os.path.realpath(__file__))
         if self.meta is None:
             self.meta = {}
-            self.orbitdb_args['ipaddress'] = None
-            self.orbitdb_args['orbitdbAddress'] = None
-            self.orbitdb_args['index'] = None
-            self.orbitdb_args['chunkSize'] = None
-            self.orbitdb_args['swarmName'] = None
-
+            self.on_open = self.on_open
+            self.on_message = self.on_message
+            self.on_error = self.on_error
+            self.on_close = self.on_close
         else:
-            if 'ipaddress' in self.meta:
-                self.orbitdb_args['ipaddress'] = self.meta['ipaddress']
+            if 'on_open' not in meta:
+                self.on_open = self.on_open
             else:
-                self.orbitdb_args['ipaddress'] = None
-            
-            if 'orbitdbAddress' in self.meta:
-                self.orbitdb_args['orbitdbAddress'] = self.meta['orbitdbAddress']
+                self.on_open = meta['on_open']
+            if 'on_message' not in meta:
+                self.on_message = self.on_message
             else:
-                self.orbitdb_args['orbitdbAddress'] = None
-            
-            if 'index' in self.meta:
-                self.orbitdb_args['index'] = self.meta['index']
+                self.on_message = meta['on_message']
+            if 'on_error' not in meta:
+                self.on_error = self.on_error
             else:
-                self.orbitdb_args['index'] = None
-            
-            if 'chunkSize' in self.meta:
+                self.on_error = meta['on_error']
+            if 'on_close' not in meta:
+                self.on_close = self.on_close
+            else:
+                self.on_close = meta['on_close']
+            if "orbitdb" in meta:
+                if 'ipAddress' in meta["orbitdb"] and meta["orbitdb"]["ipAddress"] is not None and meta["orbitdb"]["ipAddress"] != '':
+                    self.orbitdb_args['ipaddress'] = meta["orbitdb"]["ipAddress"]
+                if 'orbitdbAddress' in meta["orbitdb"] and meta["orbitdb"]["orbitdbAddress"] is not None and meta["orbitdb"]["orbitdbAddress"] != '':
+                    self.orbitdb_args['orbitdbAddress'] = meta["orbitdb"]["orbitdbAddress"]
+                if 'index' in meta["orbitdb"] and meta["orbitdb"]["index"] is not None and meta["orbitdb"]["index"] != '':
+                    self.orbitdb_args['index'] = meta["orbitdb"]["index"]
+                if 'chunkSize' in meta["orbitdb"] and meta["orbitdb"]["chunkSize"] is not None and meta["orbitdb"]["chunkSize"] != '':
+                    self.orbitdb_args['chunkSize'] = meta["orbitdb"]["chunkSize"]
+                if 'swarmName' in meta["orbitdb"] and meta["orbitdb"]["swarmName"] is not None and meta["orbitdb"]["swarmName"] != '':
+                    self.orbitdb_args['swarmName'] = meta["orbitdb"]["swarmName"]
+                if 'port' in meta["orbitdb"] and meta["orbitdb"]["port"] is not None and meta["orbitdb"]["port"] != '':
+                    self.orbitdb_args['port'] = meta["orbitdb"]["port"]
+            else:
+                pass
+            if 'ipaddress' in self.meta and self.meta['ipaddress'] is not None and self.meta['ipaddress'] != '':
+                self.orbitdb_args['ipaddress'] = self.meta['ipaddress']           
+            if 'orbitdbAddress' in self.meta and self.meta['orbitdbAddress'] is not None and self.meta['orbitdbAddress'] != '':
+                self.orbitdb_args['orbitdbAddress'] = self.meta['orbitdbAddress']            
+            if 'index' in self.meta and self.meta['index'] is not None and self.meta['index'] != '':
+                self.orbitdb_args['index'] = self.meta['index']            
+            if 'chunkSize' in self.meta and self.meta['chunkSize'] is not None and self.meta['chunkSize'] != '':
                 self.orbitdb_args['chunkSize'] = self.meta['chunkSize']
             else:
                 self.orbitdb_args['chunkSize'] = None
-
-            if 'swarmName' in self.meta:
+            if 'swarmName' in self.meta and self.meta['swarmName'] is not None and self.meta['swarmName'] != '':
                 self.orbitdb_args['swarmName'] = self.meta['swarmName']
-            else:
-                self.orbitdb_args['swarmName'] = None
-
-            if 'port' in self.meta:
+            if 'port' in self.meta and self.meta['port'] is not None and self.meta['port'] != '':
                 self.orbitdb_args['port'] = self.meta['port']
-            else:
-                self.orbitdb_args['port'] = 50001
         
         if self.orbitdb_args['ipaddress'] is None:
             self.orbitdb_args['ipaddress'] = '127.0.0.1'
